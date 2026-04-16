@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: dark;
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+body {
+  @apply bg-ink-950 text-ink-100 antialiased;
+  font-feature-settings: "cv11", "ss01", "ss03";
+}
+
+/* Custom thin scrollbar for dense panels */
+.scroll-panel::-webkit-scrollbar {
+  width: 8px;
+}
+.scroll-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scroll-panel::-webkit-scrollbar-thumb {
+  background: rgb(58 66 85 / 0.7);
+  border-radius: 9999px;
+}
+.scroll-panel::-webkit-scrollbar-thumb:hover {
+  background: rgb(82 91 110 / 0.9);
+}
+
+/* Suggestion card hover lift */
+.card-lift {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+.card-lift:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 24px -12px rgba(56, 101, 245, 0.35);
+}

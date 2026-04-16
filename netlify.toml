@@ -1,0 +1,14 @@
+# Netlify deploys the Next.js app through the official Next.js runtime plugin.
+# The runtime supports App Router, API Route Handlers, and Edge Functions.
+# https://docs.netlify.com/frameworks/next-js/overview/
+
+[build]
+  command = "npm run build"
+  publish = ".next"
+
+[build.environment]
+  NODE_VERSION = "20"
+  NEXT_TELEMETRY_DISABLED = "1"
+
+[[plugins]]
+  package = "@netlify/plugin-nextjs"
