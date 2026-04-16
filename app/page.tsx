@@ -23,6 +23,7 @@ export default function HomePage() {
   const hasKey = useCopilotStore(selectHasApiKey);
   const isRecording = useCopilotStore((s) => s.isRecording);
   const appendTranscript = useCopilotStore((s) => s.appendTranscript);
+  const resetSession = useCopilotStore((s) => s.resetSession);
   const setError = useCopilotStore((s) => s.setError);
 
   // --- Wire chunks → /api/transcribe → store ----------------------------
@@ -47,7 +48,7 @@ export default function HomePage() {
     [appendTranscript],
   );
 
-  const { start, stop } = useAudioRecorder(onChunk);
+  const { start, stop, flush } = useAudioRecorder(onChunk);
   const { triggerOnce } = useSuggestionEngine();
   const { sendUserQuery, sendSuggestionClick } = useChatEngine();
 
@@ -61,9 +62,24 @@ export default function HomePage() {
     else void start();
   }, [hasKey, isRecording, setError, start, stop]);
 
-  const onManualRefresh = useCallback(() => {
-    void triggerOnce();
-  }, [triggerOnce]);
+  const onManualRefresh = useCallback(async () => {
+    if (!hasKey) {
+      setError("Paste your Groq API key in Settings first.");
+      setSettingsOpen(true);
+      return;
+    }
+    if (isRecording) {
+      await flush();
+    }
+    await triggerOnce();
+  }, [flush, hasKey, isRecording, setError, triggerOnce]);
+
+  const onResetSession = useCallback(async () => {
+    if (isRecording) {
+      await stop();
+    }
+    resetSession();
+  }, [isRecording, resetSession, stop]);
 
   // Open settings automatically on first ever load (no key yet).
   useEffect(() => {
@@ -79,6 +95,7 @@ export default function HomePage() {
         onToggleRecord={onToggleRecord}
         onOpenSettings={() => setSettingsOpen(true)}
         onManualRefresh={onManualRefresh}
+        onResetSession={onResetSession}
       />
 
       {mounted && !hasKey && (

@@ -10,8 +10,7 @@ This repository is the submission for the TwinMind Live Suggestions assignment
 (April 2026). The reference spec lives in [`docs/`](./docs).
 
 > **Deployed app:** https://twinmind-assignment-namo507-20260416.netlify.app
-> The app is usable end-to-end once the reviewer
-> pastes their own Groq key in the Settings modal._
+> The app is usable end-to-end once the reviewer pastes their own Groq key in the Settings modal.
 
 ---
 
@@ -23,8 +22,8 @@ Three panels, left to right:
    WebM/opus chunks to `/api/transcribe`, which proxies them to
    `whisper-large-v3`. Transcribed text is appended to the live transcript with
    auto-scroll to the latest line.
-2. **Live suggestions** — every ~30s (or when the user clicks **Refresh**), a
-   sliding window of the most recent transcript text is sent to
+2. **Live suggestions** — every ~30s (or when the user clicks **Refresh**, which
+  flushes the current recording chunk first), a sliding window of the most recent transcript text is sent to
    `openai/gpt-oss-120b` in JSON mode with a tightly-constrained system prompt.
    The model returns exactly three cards (a mix of `QUESTION`,
    `TALKING_POINT`, `ANSWER`, `FACT_CHECK`, `CONTEXT`). New batches land at the

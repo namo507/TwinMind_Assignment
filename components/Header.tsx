@@ -9,14 +9,19 @@ import { cn } from "@/utils/cn";
 interface HeaderProps {
   onToggleRecord: () => void;
   onOpenSettings: () => void;
-  onManualRefresh: () => void;
+  onManualRefresh: () => void | Promise<void>;
+  onResetSession: () => void | Promise<void>;
 }
 
-export function Header({ onToggleRecord, onOpenSettings, onManualRefresh }: HeaderProps) {
+export function Header({
+  onToggleRecord,
+  onOpenSettings,
+  onManualRefresh,
+  onResetSession,
+}: HeaderProps) {
   const isRecording = useCopilotStore((s) => s.isRecording);
   const isGeneratingSuggestions = useCopilotStore((s) => s.isGeneratingSuggestions);
   const hasKey = useCopilotStore(selectHasApiKey);
-  const resetSession = useCopilotStore((s) => s.resetSession);
 
   const onExport = useCallback(() => {
     const s = useCopilotStore.getState();
@@ -31,8 +36,8 @@ export function Header({ onToggleRecord, onOpenSettings, onManualRefresh }: Head
 
   const onReset = useCallback(() => {
     if (!confirm("Clear transcript, suggestions, and chat for this session?")) return;
-    resetSession();
-  }, [resetSession]);
+    void onResetSession();
+  }, [onResetSession]);
 
   return (
     <header className="flex items-center justify-between gap-4 border-b border-ink-800 bg-ink-900/60 px-6 py-3 backdrop-blur">
@@ -52,9 +57,9 @@ export function Header({ onToggleRecord, onOpenSettings, onManualRefresh }: Head
         <button
           type="button"
           onClick={onManualRefresh}
-          disabled={isGeneratingSuggestions}
+          disabled={!hasKey || isGeneratingSuggestions}
           className="inline-flex items-center gap-1.5 rounded-md border border-ink-700 bg-ink-800/60 px-3 py-1.5 text-xs font-medium text-ink-200 hover:bg-ink-700/60 disabled:cursor-not-allowed disabled:opacity-60"
-          title="Refresh suggestions now"
+          title={!hasKey ? "Add your Groq API key in Settings first" : "Refresh transcript and suggestions now"}
         >
           <RefreshCcw
             className={cn("h-3.5 w-3.5", isGeneratingSuggestions && "animate-spin")}

@@ -35,6 +35,7 @@ export function useAudioRecorder(onChunk: ChunkHandler) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const seqRef = useRef(0);
+  const opChainRef = useRef<Promise<void>>(Promise.resolve());
   // Keep the latest onChunk in a ref so the recorder callbacks always call the
   // current handler (avoids stale closures if the parent rebinds).
   const onChunkRef = useRef(onChunk);
@@ -100,19 +101,64 @@ export function useAudioRecorder(onChunk: ChunkHandler) {
     }
   }, [setError]);
 
-  const cycle = useCallback(async () => {
-    // Finish the current chunk → hand it to the callback → start the next chunk.
-    const blob = await stopCurrentRecorder();
-    startNewRecorder();
-    if (blob && blob.size > 500 /* ignore near-silent fragments */) {
+  const enqueue = useCallback(<T,>(task: () => Promise<T>): Promise<T> => {
+    const run = opChainRef.current.then(task, task);
+    opChainRef.current = run.then(
+      () => undefined,
+      () => undefined,
+    );
+    return run;
+  }, []);
+
+  const emitChunk = useCallback(
+    async (blob: Blob | null, errorPrefix: string): Promise<boolean> => {
+      if (!blob || blob.size <= 500 /* ignore near-silent fragments */) {
+        return false;
+      }
       const seq = ++seqRef.current;
       try {
         await onChunkRef.current(blob, seq);
+        return true;
       } catch (err) {
-        setError(`Chunk upload failed: ${(err as Error).message}`);
+        setError(`${errorPrefix}: ${(err as Error).message}`);
       }
+      return false;
+    },
+    [setError],
+  );
+
+  const rotateRecorder = useCallback(
+    async ({ restart, errorPrefix }: { restart: boolean; errorPrefix: string }) => {
+      const blob = await stopCurrentRecorder();
+      if (restart && streamRef.current) {
+        startNewRecorder();
+      }
+      return emitChunk(blob, errorPrefix);
+    },
+    [emitChunk, startNewRecorder, stopCurrentRecorder],
+  );
+
+  const armInterval = useCallback(() => {
+    if (intervalRef.current) {
+      clearInterval(intervalRef.current);
     }
-  }, [startNewRecorder, stopCurrentRecorder, setError]);
+    intervalRef.current = setInterval(() => {
+      void enqueue(() =>
+        rotateRecorder({ restart: true, errorPrefix: "Chunk upload failed" }),
+      );
+    }, audioChunkMs);
+  }, [audioChunkMs, enqueue, rotateRecorder]);
+
+  const flush = useCallback(async (): Promise<boolean> => {
+    if (!streamRef.current) return false;
+    const flushed = await enqueue(() =>
+      rotateRecorder({ restart: true, errorPrefix: "Manual refresh failed" }),
+    );
+    if (streamRef.current) {
+      armInterval();
+    }
+    return flushed;
+  }, [armInterval, enqueue, rotateRecorder]);
 
   const start = useCallback(async () => {
     if (isRecording) return;
@@ -143,32 +189,23 @@ export function useAudioRecorder(onChunk: ChunkHandler) {
     seqRef.current = 0;
 
     startNewRecorder();
-    intervalRef.current = setInterval(() => {
-      void cycle();
-    }, audioChunkMs);
+    armInterval();
 
     setIsRecording(true);
-  }, [audioChunkMs, cycle, isRecording, setError, setIsRecording, startNewRecorder]);
+  }, [armInterval, isRecording, setError, setIsRecording, startNewRecorder]);
 
   const stop = useCallback(async () => {
     if (intervalRef.current) {
       clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    // Flush one last chunk so the tail of the recording isn't lost.
-    const tail = await stopCurrentRecorder();
-    if (tail && tail.size > 500) {
-      const seq = ++seqRef.current;
-      try {
-        await onChunkRef.current(tail, seq);
-      } catch (err) {
-        setError(`Final chunk upload failed: ${(err as Error).message}`);
-      }
-    }
+    await enqueue(() =>
+      rotateRecorder({ restart: false, errorPrefix: "Final chunk upload failed" }),
+    );
     streamRef.current?.getTracks().forEach((t) => t.stop());
     streamRef.current = null;
     setIsRecording(false);
-  }, [setError, setIsRecording, stopCurrentRecorder]);
+  }, [enqueue, rotateRecorder, setIsRecording]);
 
   // Always clean up on unmount.
   useEffect(() => {
@@ -179,5 +216,5 @@ export function useAudioRecorder(onChunk: ChunkHandler) {
     };
   }, []);
 
-  return { start, stop };
+  return { start, stop, flush };
 }

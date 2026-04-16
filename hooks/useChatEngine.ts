@@ -115,6 +115,8 @@ export function useChatEngine() {
   /** Suggestion click → detailed long-form answer. */
   const sendSuggestionClick = useCallback(
     async (card: SuggestionCard): Promise<void> => {
+      const stateBefore = useCopilotStore.getState();
+      const history = stateBefore.chat.map((m) => ({ role: m.role, content: m.content }));
       const visibleUserText = `${card.title}\n\n${card.content}`;
       addUserMessage(visibleUserText, card.id);
       const assistantId = addAssistantPlaceholder();
@@ -129,7 +131,7 @@ export function useChatEngine() {
 
       await runStream({
         system: state.detailedAnswerPrompt,
-        messages: [{ role: "user", content: userPayload }],
+        messages: [...history, { role: "user", content: userPayload }],
         assistantId,
         temperature: 0.25,
       });
