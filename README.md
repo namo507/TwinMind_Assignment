@@ -9,8 +9,8 @@ server-side secrets, no accounts, no persistence beyond the browser.
 This repository is the submission for the TwinMind Live Suggestions assignment
 (April 2026). The reference spec lives in [`docs/`](./docs).
 
-> **Deployed app:** _paste the public URL here after deploy — see
-> [Deploying](#deploying) below. The app is usable end-to-end once the reviewer
+> **Deployed app:** https://twinmind-assignment-namo507-20260416.netlify.app
+> The app is usable end-to-end once the reviewer
 > pastes their own Groq key in the Settings modal._
 
 ---
